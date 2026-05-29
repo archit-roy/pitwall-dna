@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { ClusterPoint } from '../../api'
+import type { ClusterPoint } from '../../api'
 
 interface Props {
   points: ClusterPoint[]

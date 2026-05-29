@@ -1,4 +1,4 @@
-import { DriverDNA } from '../../api'
+import type { DriverDNA } from '../../api'
 
 interface Props {
   profiles: DriverDNA[]

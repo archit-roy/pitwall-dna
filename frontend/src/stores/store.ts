@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Round, Driver, DriverDNA } from '../api'
+import type { Round, Driver, DriverDNA } from '../api'
 
 interface AppState {
   // Session selection

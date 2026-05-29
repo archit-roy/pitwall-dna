@@ -5,7 +5,8 @@ import RadarChart from './components/radar/RadarChart'
 import CornerChart from './components/corner/CornerChart'
 import ScatterPlot from './components/compare/ScatterPlot'
 import { useAppStore } from './stores/store'
-import { getDriverDNA, getCluster, ClusterPoint } from './api'
+import { getDriverDNA, getCluster } from './api'
+import type { ClusterPoint } from './api'
 
 export default function App() {
   const {

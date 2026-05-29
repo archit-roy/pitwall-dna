@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
-import { DriverDNA, SignatureChannel } from '../../api'
+import type { DriverDNA, SignatureChannel } from '../../api'
 
 interface Props {
   dna: DriverDNA
@@ -55,7 +55,6 @@ export default function SignatureChart({ dna }: Props) {
       const color  = CHANNEL_COLORS[channel.name] ?? '#888'
       const label  = CHANNEL_LABELS[channel.name] ?? channel.name
 
-      // Row background
       svg.append('rect')
         .attr('x', marginLeft)
         .attr('y', y0)
@@ -63,13 +62,11 @@ export default function SignatureChart({ dna }: Props) {
         .attr('height', rowHeight)
         .attr('fill', i % 2 === 0 ? '#18181b' : '#121214')
 
-      // Y scale for this channel
       const yScale = d3
         .scaleLinear()
         .domain([0, 1])
         .range([y0 + rowHeight - 4, y0 + 4])
 
-      // Area fill
       const area = d3
         .area<number>()
         .x((_, idx) => xScale(distance[idx]))
@@ -83,7 +80,6 @@ export default function SignatureChart({ dna }: Props) {
         .attr('fill', color)
         .attr('opacity', 0.15)
 
-      // Line
       const line = d3
         .line<number>()
         .x((_, idx) => xScale(distance[idx]))
@@ -98,7 +94,6 @@ export default function SignatureChart({ dna }: Props) {
         .attr('stroke-width', 1.5)
         .attr('opacity', 0.9)
 
-      // Label
       svg.append('text')
         .attr('x', marginLeft - 8)
         .attr('y', y0 + rowHeight / 2 + 4)
@@ -109,7 +104,6 @@ export default function SignatureChart({ dna }: Props) {
         .text(label)
     })
 
-    // Distance axis at the bottom
     const xAxis = d3.axisBottom(xScale)
       .ticks(8)
       .tickFormat(d => `${(+d / 1000).toFixed(1)}km`)
