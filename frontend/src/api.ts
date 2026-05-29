@@ -1,8 +1,8 @@
 import axios from 'axios'
 
 const client = axios.create({
-  baseURL: 'http://127.0.0.1:8000',
-  timeout: 120000, // 2 minutes — FastF1 can be slow on first load
+  baseURL: import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000',
+  timeout: 120000,
 })
 
 // --- Types ---
@@ -63,6 +63,16 @@ export interface DriverDNA {
   corner_profiles: CornerProfile[]
 }
 
+export interface ClusterPoint {
+  driver: string
+  full_name: string
+  team: string
+  team_color: string
+  x: number
+  y: number
+  style_dimensions: StyleDimension[]
+}
+
 // --- API calls ---
 
 export const getSchedule = async (year: number): Promise<Round[]> => {
@@ -87,15 +97,6 @@ export const getDriverDNA = async (
 ): Promise<DriverDNA> => {
   const res = await client.get(`/api/dna/${year}/${round}/${sessionType}/${driver}`)
   return res.data
-}
-export interface ClusterPoint {
-  driver: string
-  full_name: string
-  team: string
-  team_color: string
-  x: number
-  y: number
-  style_dimensions: StyleDimension[]
 }
 
 export const getCluster = async (
