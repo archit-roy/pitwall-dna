@@ -66,7 +66,26 @@ export default function App() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.25rem', letterSpacing: '-0.05em' }}>PITWALL</span>
-          <span style={{ color: '#71717a', fontSize: '0.875rem' }}>Driver DNA Analyser</span>
+          <span style={{ color: '#3f3f46', fontSize: '0.875rem' }}>|</span>
+          {round ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ color: '#ffffff', fontSize: '0.875rem', fontWeight: 700 }}>
+                {round.event_name}
+              </span>
+              <span style={{
+                padding: '0.125rem 0.5rem',
+                background: '#27272a',
+                borderRadius: '0.375rem',
+                fontSize: '0.75rem',
+                color: '#a1a1aa',
+                fontFamily: 'monospace',
+              }}>
+                {year} · {sessionType}
+              </span>
+            </div>
+          ) : (
+            <span style={{ color: '#71717a', fontSize: '0.875rem' }}>Driver DNA Analyser</span>
+          )}
         </div>
         {(dnaProfiles.length > 0 || clusterPoints.length > 0 || loading || clusterLoading) && (
           <button
