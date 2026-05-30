@@ -2,10 +2,12 @@ import { useEffect } from 'react'
 import { useAppStore } from '../stores/store'
 import { getSchedule, getDrivers } from '../api'
 
-const YEARS = [2024, 2023, 2022, 2021]
+const YEARS = [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018]
 const SESSION_TYPES = [
-  { value: 'Q', label: 'Qualifying' },
-  { value: 'R', label: 'Race' },
+  { value: 'Q',   label: 'Qualifying' },
+  { value: 'R',   label: 'Race' },
+  { value: 'FP1', label: 'FP1' },
+  { value: 'FP2', label: 'FP2' },
   { value: 'FP3', label: 'FP3' },
 ]
 
@@ -17,7 +19,6 @@ export default function SessionPicker() {
     setLoading, setError, loading,
   } = useAppStore()
 
-  // Load schedule when year changes
   useEffect(() => {
     setLoading(true)
     getSchedule(year)
@@ -26,7 +27,6 @@ export default function SessionPicker() {
       .finally(() => setLoading(false))
   }, [year])
 
-  // Load drivers when round or session changes
   useEffect(() => {
     if (!round) return
     setLoading(true)
@@ -42,7 +42,7 @@ export default function SessionPicker() {
       {/* Year */}
       <div>
         <label className="text-zinc-400 text-sm mb-2 block">Season</label>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {YEARS.map((y) => (
             <button
               key={y}
@@ -62,7 +62,7 @@ export default function SessionPicker() {
       {/* Session type */}
       <div>
         <label className="text-zinc-400 text-sm mb-2 block">Session</label>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {SESSION_TYPES.map((s) => (
             <button
               key={s.value}
