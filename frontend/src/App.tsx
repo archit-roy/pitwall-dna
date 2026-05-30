@@ -4,6 +4,7 @@ import SignatureChart from './components/dna/SignatureChart'
 import RadarChart from './components/radar/RadarChart'
 import CornerChart from './components/corner/CornerChart'
 import ScatterPlot from './components/compare/ScatterPlot'
+import { SkeletonCard, SkeletonLabel } from './components/ui/Skeleton'
 import { useAppStore } from './stores/store'
 import { getDriverDNA, getCluster } from './api'
 import type { ClusterPoint } from './api'
@@ -18,12 +19,15 @@ export default function App() {
   const [clusterPoints, setClusterPoints] = useState<ClusterPoint[]>([])
   const [clusterLoading, setClusterLoading] = useState(false)
   const [showPicker, setShowPicker] = useState(true)
+  const [loadingDriver, setLoadingDriver] = useState<string | null>(null)
 
   const handleAnalyse = async () => {
     if (!round || selectedDrivers.length === 0) return
     setLoading(true)
     setError(null)
+    setShowPicker(false)
     for (const driver of selectedDrivers) {
+      setLoadingDriver(driver)
       try {
         const dna = await getDriverDNA(year, round.round, sessionType, driver)
         addDNAProfile(dna)
@@ -31,14 +35,15 @@ export default function App() {
         setError(`Failed to load DNA for ${driver}`)
       }
     }
+    setLoadingDriver(null)
     setLoading(false)
-    setShowPicker(false)
   }
 
   const handleCluster = async () => {
     if (!round) return
     setClusterLoading(true)
     setError(null)
+    setShowPicker(false)
     try {
       const result = await getCluster(year, round.round, sessionType)
       setClusterPoints(result.points)
@@ -46,7 +51,6 @@ export default function App() {
       setError('Failed to load cluster data')
     }
     setClusterLoading(false)
-    setShowPicker(false)
   }
 
   return (
@@ -64,7 +68,7 @@ export default function App() {
           <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.25rem', letterSpacing: '-0.05em' }}>PITWALL</span>
           <span style={{ color: '#71717a', fontSize: '0.875rem' }}>Driver DNA Analyser</span>
         </div>
-        {(dnaProfiles.length > 0 || clusterPoints.length > 0) && (
+        {(dnaProfiles.length > 0 || clusterPoints.length > 0 || loading || clusterLoading) && (
           <button
             onClick={() => setShowPicker(p => !p)}
             style={{
@@ -82,7 +86,6 @@ export default function App() {
         )}
       </div>
 
-      {/* Main content — always stacked */}
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
         {/* Session picker */}
@@ -137,82 +140,99 @@ export default function App() {
         )}
 
         {/* Results */}
-        {dnaProfiles.length === 0 && clusterPoints.length === 0 ? (
-          showPicker ? null : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+          {/* Loading labels */}
+          {loadingDriver && (
+            <SkeletonLabel text={`Loading telemetry for ${loadingDriver}...`} />
+          )}
+          {clusterLoading && (
+            <SkeletonLabel text="Building style profiles for all drivers..." />
+          )}
+
+          {/* Skeleton placeholders while loading */}
+          {loading && selectedDrivers
+            .filter(d => !dnaProfiles.find(p => p.driver_code === d))
+            .map(d => <SkeletonCard key={d} />)
+          }
+
+          {/* Scatter */}
+          {clusterPoints.length > 0 && (
+            <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem', overflow: 'hidden' }}>
+              <ScatterPlot points={clusterPoints} />
+            </div>
+          )}
+
+          {/* Radar */}
+          {dnaProfiles.length > 0 && (
+            <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem' }}>
+              <RadarChart profiles={dnaProfiles} />
+            </div>
+          )}
+
+          {/* Corner breakdown */}
+          {dnaProfiles.length > 0 && (
+            <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem', overflowX: 'auto' }}>
+              <CornerChart profiles={dnaProfiles} />
+            </div>
+          )}
+
+          {/* Driver cards */}
+          {dnaProfiles.map((dna) => (
+            <div
+              key={dna.driver_code}
+              style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div style={{ width: '4px', height: '2.5rem', borderRadius: '9999px', background: dna.team_color, flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontWeight: 900, fontSize: '1.125rem', letterSpacing: '-0.025em' }}>{dna.driver_code}</p>
+                  <p style={{ color: '#a1a1aa', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {dna.full_name} · {dna.team}
+                  </p>
+                </div>
+                <div style={{ marginLeft: 'auto', textAlign: 'right', flexShrink: 0 }}>
+                  <p style={{ color: '#a1a1aa', fontSize: '0.75rem' }}>Best lap</p>
+                  <p style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem' }}>
+                    {new Date(dna.best_lap_time * 1000).toISOString().substr(14, 8)}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ overflow: 'hidden' }}>
+                <SignatureChart dna={dna} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginTop: '1rem' }}>
+                {dna.style_dimensions.map((dim) => (
+                  <div key={dim.name} style={{ background: '#27272a', borderRadius: '0.5rem', padding: '0.625rem' }}>
+                    <p style={{ color: '#71717a', fontSize: '0.7rem', marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dim.label}</p>
+                    <div style={{ height: '6px', background: '#3f3f46', borderRadius: '9999px' }}>
+                      <div style={{
+                        height: '6px',
+                        borderRadius: '9999px',
+                        width: `${dim.value * 100}%`,
+                        background: dna.team_color,
+                        transition: 'width 1s ease-out',
+                      }} />
+                    </div>
+                    <p style={{ fontSize: '0.7rem', fontFamily: 'monospace', marginTop: '0.25rem', color: '#d4d4d8' }}>
+                      {(dim.value * 100).toFixed(0)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Empty state */}
+          {!loading && !clusterLoading && dnaProfiles.length === 0 && clusterPoints.length === 0 && !showPicker && (
             <div style={{ height: '16rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#52525b', fontSize: '0.875rem' }}>
               Select a session, pick drivers, hit Analyse DNA
             </div>
-          )
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          )}
 
-            {/* Scatter */}
-            {clusterPoints.length > 0 && (
-              <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem', overflow: 'hidden' }}>
-                <ScatterPlot points={clusterPoints} />
-              </div>
-            )}
-
-            {/* Radar */}
-            {dnaProfiles.length > 0 && (
-              <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem' }}>
-                <RadarChart profiles={dnaProfiles} />
-              </div>
-            )}
-
-            {/* Corner breakdown */}
-            {dnaProfiles.length > 0 && (
-              <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem', overflowX: 'auto' }}>
-                <CornerChart profiles={dnaProfiles} />
-              </div>
-            )}
-
-            {/* Driver cards */}
-            {dnaProfiles.map((dna) => (
-              <div
-                key={dna.driver_code}
-                style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                  <div style={{ width: '4px', height: '2.5rem', borderRadius: '9999px', background: dna.team_color, flexShrink: 0 }} />
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ fontWeight: 900, fontSize: '1.125rem', letterSpacing: '-0.025em' }}>{dna.driver_code}</p>
-                    <p style={{ color: '#a1a1aa', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {dna.full_name} · {dna.team}
-                    </p>
-                  </div>
-                  <div style={{ marginLeft: 'auto', textAlign: 'right', flexShrink: 0 }}>
-                    <p style={{ color: '#a1a1aa', fontSize: '0.75rem' }}>Best lap</p>
-                    <p style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem' }}>
-                      {new Date(dna.best_lap_time * 1000).toISOString().substr(14, 8)}
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ overflow: 'hidden' }}>
-                  <SignatureChart dna={dna} />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginTop: '1rem' }}>
-                  {dna.style_dimensions.map((dim) => (
-                    <div key={dim.name} style={{ background: '#27272a', borderRadius: '0.5rem', padding: '0.625rem' }}>
-                      <p style={{ color: '#71717a', fontSize: '0.7rem', marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dim.label}</p>
-                      <div style={{ height: '6px', background: '#3f3f46', borderRadius: '9999px' }}>
-                        <div style={{ height: '6px', borderRadius: '9999px', width: `${dim.value * 100}%`, background: dna.team_color }} />
-                      </div>
-                      <p style={{ fontSize: '0.7rem', fontFamily: 'monospace', marginTop: '0.25rem', color: '#d4d4d8' }}>
-                        {(dim.value * 100).toFixed(0)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-              </div>
-            ))}
-
-          </div>
-        )}
-
+        </div>
       </div>
     </div>
   )
