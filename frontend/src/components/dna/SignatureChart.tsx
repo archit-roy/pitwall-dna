@@ -25,24 +25,27 @@ const CHANNEL_LABELS: Record<string, string> = {
 }
 
 export default function SignatureChart({ dna }: Props) {
-  const svgRef = useRef<SVGSVGElement>(null)
+  const svgRef    = useRef<SVGSVGElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!svgRef.current) return
+  const draw = () => {
+    if (!svgRef.current || !wrapperRef.current) return
 
-    const svg = d3.select(svgRef.current)
+    const svg        = d3.select(svgRef.current)
     svg.selectAll('*').remove()
 
-    const width      = svgRef.current.clientWidth
-    const rowHeight  = 60
-    const marginLeft = 80
-    const marginRight = 20
-    const paddingTop  = 10
+    const width      = wrapperRef.current.clientWidth
+    const rowHeight  = 50
+    const marginLeft = 60
+    const marginRight = 10
+    const paddingTop  = 8
 
     const channels = dna.channels.filter(c => CHANNELS.includes(c.name))
-    const totalHeight = channels.length * rowHeight + paddingTop
+    const totalHeight = channels.length * rowHeight + paddingTop + 20
 
-    svg.attr('height', totalHeight)
+    svg
+      .attr('width', width)
+      .attr('height', totalHeight)
 
     const distance = dna.distance_meters
     const xScale = d3
@@ -51,9 +54,9 @@ export default function SignatureChart({ dna }: Props) {
       .range([marginLeft, width - marginRight])
 
     channels.forEach((channel: SignatureChannel, i: number) => {
-      const y0     = paddingTop + i * rowHeight
-      const color  = CHANNEL_COLORS[channel.name] ?? '#888'
-      const label  = CHANNEL_LABELS[channel.name] ?? channel.name
+      const y0    = paddingTop + i * rowHeight
+      const color = CHANNEL_COLORS[channel.name] ?? '#888'
+      const label = CHANNEL_LABELS[channel.name] ?? channel.name
 
       svg.append('rect')
         .attr('x', marginLeft)
@@ -95,34 +98,41 @@ export default function SignatureChart({ dna }: Props) {
         .attr('opacity', 0.9)
 
       svg.append('text')
-        .attr('x', marginLeft - 8)
+        .attr('x', marginLeft - 6)
         .attr('y', y0 + rowHeight / 2 + 4)
         .attr('text-anchor', 'end')
-        .attr('font-size', 11)
+        .attr('font-size', 10)
         .attr('fill', color)
         .attr('font-family', 'monospace')
         .text(label)
     })
 
     const xAxis = d3.axisBottom(xScale)
-      .ticks(8)
+      .ticks(5)
       .tickFormat(d => `${(+d / 1000).toFixed(1)}km`)
 
     svg.append('g')
-      .attr('transform', `translate(0, ${totalHeight})`)
+      .attr('transform', `translate(0, ${totalHeight - 20})`)
       .call(xAxis)
       .call(g => {
         g.select('.domain').attr('stroke', '#3f3f46')
         g.selectAll('.tick line').attr('stroke', '#3f3f46')
         g.selectAll('.tick text')
           .attr('fill', '#71717a')
-          .attr('font-size', 10)
+          .attr('font-size', 9)
       })
+  }
 
+  useEffect(() => {
+    draw()
+
+    const observer = new ResizeObserver(() => draw())
+    if (wrapperRef.current) observer.observe(wrapperRef.current)
+    return () => observer.disconnect()
   }, [dna])
 
   return (
-    <div className="w-full">
+    <div ref={wrapperRef} className="w-full overflow-hidden">
       <p className="text-zinc-400 text-xs mb-2 font-mono uppercase tracking-widest">
         Telemetry Signature
       </p>

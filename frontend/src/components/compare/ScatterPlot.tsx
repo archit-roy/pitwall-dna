@@ -7,21 +7,22 @@ interface Props {
 }
 
 export default function ScatterPlot({ points }: Props) {
-  const svgRef = useRef<SVGSVGElement>(null)
+  const svgRef     = useRef<SVGSVGElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<ClusterPoint | null>(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
 
-  useEffect(() => {
-    if (!svgRef.current || !points.length) return
+  const draw = () => {
+    if (!svgRef.current || !wrapperRef.current || !points.length) return
 
     const svg    = d3.select(svgRef.current)
     svg.selectAll('*').remove()
 
-    const width  = svgRef.current.clientWidth
-    const height = 380
+    const width  = wrapperRef.current.clientWidth
+    const height = Math.min(320, width * 0.7)
     const margin = { top: 20, right: 20, bottom: 40, left: 40 }
 
-    svg.attr('height', height)
+    svg.attr('width', width).attr('height', height)
 
     const xScale = d3.scaleLinear()
       .domain(d3.extent(points, p => p.x) as [number, number])
@@ -36,7 +37,7 @@ export default function ScatterPlot({ points }: Props) {
     // Grid lines
     svg.append('g')
       .selectAll('line')
-      .data(yScale.ticks(5))
+      .data(yScale.ticks(4))
       .join('line')
       .attr('x1', margin.left)
       .attr('x2', width - margin.right)
@@ -47,7 +48,7 @@ export default function ScatterPlot({ points }: Props) {
 
     svg.append('g')
       .selectAll('line')
-      .data(xScale.ticks(5))
+      .data(xScale.ticks(4))
       .join('line')
       .attr('x1', d => xScale(d))
       .attr('x2', d => xScale(d))
@@ -59,18 +60,18 @@ export default function ScatterPlot({ points }: Props) {
     // Axes
     svg.append('g')
       .attr('transform', `translate(0, ${height - margin.bottom})`)
-      .call(d3.axisBottom(xScale).ticks(5).tickSize(0))
+      .call(d3.axisBottom(xScale).ticks(4).tickSize(0))
       .call(g => {
         g.select('.domain').attr('stroke', '#3f3f46')
-        g.selectAll('.tick text').attr('fill', '#52525b').attr('font-size', 10)
+        g.selectAll('.tick text').attr('fill', '#52525b').attr('font-size', 9)
       })
 
     svg.append('g')
       .attr('transform', `translate(${margin.left}, 0)`)
-      .call(d3.axisLeft(yScale).ticks(5).tickSize(0))
+      .call(d3.axisLeft(yScale).ticks(4).tickSize(0))
       .call(g => {
         g.select('.domain').attr('stroke', '#3f3f46')
-        g.selectAll('.tick text').attr('fill', '#52525b').attr('font-size', 10)
+        g.selectAll('.tick text').attr('fill', '#52525b').attr('font-size', 9)
       })
 
     // Axis labels
@@ -79,7 +80,7 @@ export default function ScatterPlot({ points }: Props) {
       .attr('y', height - 4)
       .attr('text-anchor', 'middle')
       .attr('fill', '#52525b')
-      .attr('font-size', 10)
+      .attr('font-size', 9)
       .attr('font-family', 'monospace')
       .text('Style Component 1')
 
@@ -89,83 +90,88 @@ export default function ScatterPlot({ points }: Props) {
       .attr('y', 12)
       .attr('text-anchor', 'middle')
       .attr('fill', '#52525b')
-      .attr('font-size', 10)
+      .attr('font-size', 9)
       .attr('font-family', 'monospace')
       .text('Style Component 2')
 
     // Driver dots
     const g = svg.append('g')
 
+    const dotRadius = width < 400 ? 8 : 10
+
     g.selectAll('circle')
       .data(points)
       .join('circle')
       .attr('cx', d => xScale(d.x))
       .attr('cy', d => yScale(d.y))
-      .attr('r', 10)
+      .attr('r', dotRadius)
       .attr('fill', d => d.team_color)
       .attr('fill-opacity', 0.85)
       .attr('stroke', '#18181b')
       .attr('stroke-width', 2)
       .style('cursor', 'pointer')
-      .on('mouseover', (event, d) => {
+      .on('mouseover touchstart', (event, d) => {
+        const rect = wrapperRef.current!.getBoundingClientRect()
+        const clientX = event.touches ? event.touches[0].clientX : event.clientX
+        const clientY = event.touches ? event.touches[0].clientY : event.clientY
         setTooltip(d)
-        setTooltipPos({ x: event.offsetX + 12, y: event.offsetY - 12 })
+        setTooltipPos({
+          x: clientX - rect.left + 12,
+          y: clientY - rect.top - 12,
+        })
       })
-      .on('mousemove', (event) => {
-        setTooltipPos({ x: event.offsetX + 12, y: event.offsetY - 12 })
-      })
-      .on('mouseout', () => setTooltip(null))
+      .on('mouseout touchend', () => setTooltip(null))
 
-    // Driver code labels
+    // Driver labels
     g.selectAll('text')
       .data(points)
       .join('text')
       .attr('x', d => xScale(d.x))
       .attr('y', d => yScale(d.y) + 4)
       .attr('text-anchor', 'middle')
-      .attr('font-size', 8)
+      .attr('font-size', width < 400 ? 6 : 8)
       .attr('font-family', 'monospace')
       .attr('font-weight', 'bold')
       .attr('fill', '#ffffff')
       .attr('pointer-events', 'none')
       .text(d => d.driver)
+  }
 
+  useEffect(() => {
+    draw()
+    const observer = new ResizeObserver(() => draw())
+    if (wrapperRef.current) observer.observe(wrapperRef.current)
+    return () => observer.disconnect()
   }, [points])
 
   return (
-    <div className="w-full relative">
+    <div ref={wrapperRef} className="w-full relative">
       <p className="text-zinc-400 text-xs mb-2 font-mono uppercase tracking-widest">
         Style Scatter — all drivers
       </p>
-      <p className="text-zinc-600 text-xs mb-4">
-        Drivers close together have similar driving styles. Hover for details.
+      <p className="text-zinc-600 text-xs mb-3">
+        Drivers close together have similar styles. Tap for details.
       </p>
 
       <div className="relative">
         <svg ref={svgRef} className="w-full" />
 
-        {/* Tooltip */}
         {tooltip && (
           <div
             className="absolute pointer-events-none bg-zinc-800 border border-zinc-700
-                       rounded-lg p-3 text-xs z-10 min-w-40"
+                       rounded-lg p-3 text-xs z-10 min-w-36"
             style={{ left: tooltipPos.x, top: tooltipPos.y }}
           >
-            <p
-              className="font-black text-sm mb-1"
-              style={{ color: tooltip.team_color }}
-            >
+            <p className="font-black text-sm mb-1" style={{ color: tooltip.team_color }}>
               {tooltip.driver}
             </p>
-            <p className="text-zinc-400 mb-2">{tooltip.full_name}</p>
-            <p className="text-zinc-500">{tooltip.team}</p>
-            <div className="mt-2 flex flex-col gap-1">
+            <p className="text-zinc-400 mb-1">{tooltip.full_name}</p>
+            <p className="text-zinc-500 mb-2">{tooltip.team}</p>
+            <div className="flex flex-col gap-1">
               {tooltip.style_dimensions.slice(0, 4).map(d => (
-                <div key={d.name} className="flex justify-between gap-4">
+                <div key={d.name} className="flex justify-between gap-3">
                   <span className="text-zinc-500">{d.label}</span>
-                  <span className="font-mono text-zinc-300">
-                    {(d.value * 100).toFixed(0)}
-                  </span>
+                  <span className="font-mono text-zinc-300">{(d.value * 100).toFixed(0)}</span>
                 </div>
               ))}
             </div>
