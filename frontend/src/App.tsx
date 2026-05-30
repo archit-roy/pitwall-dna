@@ -17,6 +17,7 @@ export default function App() {
 
   const [clusterPoints, setClusterPoints] = useState<ClusterPoint[]>([])
   const [clusterLoading, setClusterLoading] = useState(false)
+  const [showPicker, setShowPicker] = useState(true)
 
   const handleAnalyse = async () => {
     if (!round || selectedDrivers.length === 0) return
@@ -31,6 +32,7 @@ export default function App() {
       }
     }
     setLoading(false)
+    setShowPicker(false)
   }
 
   const handleCluster = async () => {
@@ -44,129 +46,172 @@ export default function App() {
       setError('Failed to load cluster data')
     }
     setClusterLoading(false)
+    setShowPicker(false)
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div style={{ minHeight: '100vh', background: '#09090b', color: 'white' }}>
 
       {/* Header */}
-      <div className="border-b border-zinc-800 px-8 py-4 flex items-center gap-4">
-        <span className="text-red-500 font-black text-xl tracking-tight">PITWALL</span>
-        <span className="text-zinc-500 text-sm">Driver DNA Analyser</span>
+      <div style={{
+        borderBottom: '1px solid #27272a',
+        padding: '1rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.25rem', letterSpacing: '-0.05em' }}>PITWALL</span>
+          <span style={{ color: '#71717a', fontSize: '0.875rem' }}>Driver DNA Analyser</span>
+        </div>
+        {(dnaProfiles.length > 0 || clusterPoints.length > 0) && (
+          <button
+            onClick={() => setShowPicker(p => !p)}
+            style={{
+              padding: '0.375rem 0.75rem',
+              background: '#27272a',
+              borderRadius: '0.5rem',
+              fontSize: '0.75rem',
+              color: '#d4d4d8',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            {showPicker ? 'Hide' : 'Change session'}
+          </button>
+        )}
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 py-8 flex gap-8">
+      {/* Main content — always stacked */}
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
-        {/* Left — session picker */}
-        <div className="w-80 shrink-0">
-          <SessionPicker />
+        {/* Session picker */}
+        {showPicker && (
+          <div>
+            <SessionPicker />
 
-          <button
-            onClick={handleAnalyse}
-            disabled={!round || selectedDrivers.length === 0 || loading}
-            className="mt-4 w-full py-3 bg-red-600 hover:bg-red-500 disabled:opacity-30
-                       disabled:cursor-not-allowed rounded-xl font-bold text-sm
-                       transition-colors"
-          >
-            {loading ? 'Analysing...' : 'Analyse DNA'}
-          </button>
+            <button
+              onClick={handleAnalyse}
+              disabled={!round || selectedDrivers.length === 0 || loading}
+              style={{
+                marginTop: '1rem',
+                width: '100%',
+                padding: '0.875rem',
+                background: (!round || selectedDrivers.length === 0 || loading) ? '#7f1d1d' : '#dc2626',
+                borderRadius: '0.75rem',
+                fontWeight: 700,
+                fontSize: '0.875rem',
+                border: 'none',
+                color: 'white',
+                cursor: (!round || selectedDrivers.length === 0 || loading) ? 'not-allowed' : 'pointer',
+                opacity: (!round || selectedDrivers.length === 0 || loading) ? 0.5 : 1,
+              }}
+            >
+              {loading ? 'Analysing...' : 'Analyse DNA'}
+            </button>
 
-          <button
-            onClick={handleCluster}
-            disabled={!round || clusterLoading}
-            className="mt-2 w-full py-3 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30
-                       disabled:cursor-not-allowed rounded-xl font-bold text-sm
-                       transition-colors"
-          >
-            {clusterLoading ? 'Loading all drivers...' : 'Style Scatter — all drivers'}
-          </button>
+            <button
+              onClick={handleCluster}
+              disabled={!round || clusterLoading}
+              style={{
+                marginTop: '0.5rem',
+                width: '100%',
+                padding: '0.875rem',
+                background: '#27272a',
+                borderRadius: '0.75rem',
+                fontWeight: 700,
+                fontSize: '0.875rem',
+                border: 'none',
+                color: 'white',
+                cursor: (!round || clusterLoading) ? 'not-allowed' : 'pointer',
+                opacity: (!round || clusterLoading) ? 0.5 : 1,
+              }}
+            >
+              {clusterLoading ? 'Loading all drivers...' : 'Style Scatter — all drivers'}
+            </button>
 
-          {error && (
-            <p className="mt-3 text-red-400 text-sm">{error}</p>
-          )}
-        </div>
+            {error && (
+              <p style={{ marginTop: '0.75rem', color: '#f87171', fontSize: '0.875rem' }}>{error}</p>
+            )}
+          </div>
+        )}
 
-        {/* Right — results */}
-        <div className="flex-1">
-          {dnaProfiles.length === 0 && clusterPoints.length === 0 ? (
-            <div className="h-96 flex items-center justify-center text-zinc-600 text-sm">
+        {/* Results */}
+        {dnaProfiles.length === 0 && clusterPoints.length === 0 ? (
+          showPicker ? null : (
+            <div style={{ height: '16rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#52525b', fontSize: '0.875rem' }}>
               Select a session, pick drivers, hit Analyse DNA
             </div>
-          ) : (
-            <div className="flex flex-col gap-6">
+          )
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
-              {/* Scatter plot */}
-              {clusterPoints.length > 0 && (
-                <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
-                  <ScatterPlot points={clusterPoints} />
+            {/* Scatter */}
+            {clusterPoints.length > 0 && (
+              <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem', overflow: 'hidden' }}>
+                <ScatterPlot points={clusterPoints} />
+              </div>
+            )}
+
+            {/* Radar */}
+            {dnaProfiles.length > 0 && (
+              <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem' }}>
+                <RadarChart profiles={dnaProfiles} />
+              </div>
+            )}
+
+            {/* Corner breakdown */}
+            {dnaProfiles.length > 0 && (
+              <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem', overflowX: 'auto' }}>
+                <CornerChart profiles={dnaProfiles} />
+              </div>
+            )}
+
+            {/* Driver cards */}
+            {dnaProfiles.map((dna) => (
+              <div
+                key={dna.driver_code}
+                style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div style={{ width: '4px', height: '2.5rem', borderRadius: '9999px', background: dna.team_color, flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontWeight: 900, fontSize: '1.125rem', letterSpacing: '-0.025em' }}>{dna.driver_code}</p>
+                    <p style={{ color: '#a1a1aa', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {dna.full_name} · {dna.team}
+                    </p>
+                  </div>
+                  <div style={{ marginLeft: 'auto', textAlign: 'right', flexShrink: 0 }}>
+                    <p style={{ color: '#a1a1aa', fontSize: '0.75rem' }}>Best lap</p>
+                    <p style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem' }}>
+                      {new Date(dna.best_lap_time * 1000).toISOString().substr(14, 8)}
+                    </p>
+                  </div>
                 </div>
-              )}
 
-              {/* Radar */}
-              {dnaProfiles.length > 0 && (
-                <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
-                  <RadarChart profiles={dnaProfiles} />
+                <div style={{ overflow: 'hidden' }}>
+                  <SignatureChart dna={dna} />
                 </div>
-              )}
 
-              {/* Corner breakdown */}
-              {dnaProfiles.length > 0 && (
-                <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
-                  <CornerChart profiles={dnaProfiles} />
-                </div>
-              )}
-
-              {/* Driver cards */}
-              {dnaProfiles.map((dna) => (
-                <div
-                  key={dna.driver_code}
-                  className="bg-zinc-900 rounded-xl border border-zinc-700 p-6"
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div
-                      className="w-1 h-10 rounded-full"
-                      style={{ backgroundColor: dna.team_color }}
-                    />
-                    <div>
-                      <p className="font-black text-lg tracking-tight">{dna.driver_code}</p>
-                      <p className="text-zinc-400 text-sm">{dna.full_name} · {dna.team}</p>
-                    </div>
-                    <div className="ml-auto text-right">
-                      <p className="text-zinc-400 text-xs">Best lap</p>
-                      <p className="font-mono font-bold">
-                        {new Date(dna.best_lap_time * 1000).toISOString().substr(14, 8)}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginTop: '1rem' }}>
+                  {dna.style_dimensions.map((dim) => (
+                    <div key={dim.name} style={{ background: '#27272a', borderRadius: '0.5rem', padding: '0.625rem' }}>
+                      <p style={{ color: '#71717a', fontSize: '0.7rem', marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dim.label}</p>
+                      <div style={{ height: '6px', background: '#3f3f46', borderRadius: '9999px' }}>
+                        <div style={{ height: '6px', borderRadius: '9999px', width: `${dim.value * 100}%`, background: dna.team_color }} />
+                      </div>
+                      <p style={{ fontSize: '0.7rem', fontFamily: 'monospace', marginTop: '0.25rem', color: '#d4d4d8' }}>
+                        {(dim.value * 100).toFixed(0)}
                       </p>
                     </div>
-                  </div>
-
-                  <SignatureChart dna={dna} />
-
-                  <div className="grid grid-cols-4 gap-3 mt-4">
-                    {dna.style_dimensions.map((dim) => (
-                      <div key={dim.name} className="bg-zinc-800 rounded-lg p-3">
-                        <p className="text-zinc-500 text-xs mb-1">{dim.label}</p>
-                        <div className="h-1.5 bg-zinc-700 rounded-full">
-                          <div
-                            className="h-1.5 rounded-full transition-all"
-                            style={{
-                              width: `${dim.value * 100}%`,
-                              backgroundColor: dna.team_color,
-                            }}
-                          />
-                        </div>
-                        <p className="text-xs font-mono mt-1 text-zinc-300">
-                          {(dim.value * 100).toFixed(0)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
+                  ))}
                 </div>
-              ))}
 
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+
+          </div>
+        )}
 
       </div>
     </div>
