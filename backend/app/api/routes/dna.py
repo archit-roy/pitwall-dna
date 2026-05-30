@@ -70,10 +70,6 @@ async def get_cluster(
     round: int,
     session_type: str,
 ):
-    """
-    Build DNA for all drivers in a session and return
-    2D style coordinates for the scatter plot.
-    """
     try:
         session = load_session(year, round, session_type)
         key = f"{year}_{round}_{session_type}"
@@ -90,10 +86,7 @@ async def get_cluster(
         if not profiles:
             raise HTTPException(404, "No profiles built")
 
-        # Build feature matrix from style dimensions
         X = np.array([[dim["value"] for dim in p["style_dimensions"]] for p in profiles])
-
-        # Simple PCA to 2D (no extra deps needed)
         X_centered = X - X.mean(axis=0)
         cov = np.cov(X_centered.T)
         eigenvalues, eigenvectors = np.linalg.eigh(cov)
@@ -104,12 +97,12 @@ async def get_cluster(
         points = []
         for i, p in enumerate(profiles):
             points.append({
-                "driver":        p["driver_code"],
-                "full_name":     p["full_name"],
-                "team":          p["team"],
-                "team_color":    p["team_color"],
-                "x":             float(coords[i, 0]),
-                "y":             float(coords[i, 1]),
+                "driver":           p["driver_code"],
+                "full_name":        p["full_name"],
+                "team":             p["team"],
+                "team_color":       p["team_color"],
+                "x":                float(coords[i, 0]),
+                "y":                float(coords[i, 1]),
                 "style_dimensions": p["style_dimensions"],
             })
 
@@ -119,4 +112,55 @@ async def get_cluster(
         raise
     except Exception as e:
         logger.exception("Cluster failed")
+        raise HTTPException(500, str(e))
+
+
+@router.get("/{year}/{round}/{session_type}/delta/{driver_a}/{driver_b}")
+async def get_lap_delta(
+    year: int,
+    round: int,
+    session_type: str,
+    driver_a: str,
+    driver_b: str,
+):
+    """
+    Return the cumulative time delta between two drivers across a lap.
+    Positive = driver_a is ahead, negative = driver_b is ahead.
+    """
+    try:
+        session = load_session(year, round, session_type)
+        key = f"{year}_{round}_{session_type}"
+
+        dna_a = build_driver_dna(session, driver_a.upper(), key)
+        dna_b = build_driver_dna(session, driver_b.upper(), key)
+
+        def get_speed(dna):
+            ch = next((c for c in dna["channels"] if c["name"] == "Speed"), None)
+            if not ch:
+                return np.zeros(500)
+            raw_range = ch["raw_max"] - ch["raw_min"]
+            return np.array(ch["values"]) * raw_range + ch["raw_min"]
+
+        speed_a = get_speed(dna_a)
+        speed_b = get_speed(dna_b)
+        distance = np.array(dna_a["distance_meters"])
+
+        segment_dist = np.diff(distance)
+        time_a = segment_dist / (speed_a[:-1] + 1e-6) * 3.6
+        time_b = segment_dist / (speed_b[:-1] + 1e-6) * 3.6
+
+        delta = np.cumsum(time_b - time_a)
+        delta = delta - delta[0]
+
+        return {
+            "driver_a":    driver_a.upper(),
+            "driver_b":    driver_b.upper(),
+            "color_a":     dna_a["team_color"],
+            "color_b":     dna_b["team_color"],
+            "distance":    distance[1:].tolist(),
+            "delta":       delta.tolist(),
+            "final_delta": float(delta[-1]),
+        }
+    except Exception as e:
+        logger.exception("Delta failed")
         raise HTTPException(500, str(e))

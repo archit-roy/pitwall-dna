@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import SessionPicker from './components/SessionPicker'
 import SignatureChart from './components/dna/SignatureChart'
+import DeltaChart from './components/dna/DeltaChart'
 import RadarChart from './components/radar/RadarChart'
 import CornerChart from './components/corner/CornerChart'
 import ScatterPlot from './components/compare/ScatterPlot'
 import { SkeletonCard, SkeletonLabel } from './components/ui/Skeleton'
 import { useAppStore } from './stores/store'
-import { getDriverDNA, getCluster } from './api'
-import type { ClusterPoint } from './api'
+import { getDriverDNA, getCluster, getLapDelta } from './api'
+import type { ClusterPoint, LapDelta } from './api'
 
 export default function App() {
   const {
@@ -20,12 +21,15 @@ export default function App() {
   const [clusterLoading, setClusterLoading] = useState(false)
   const [showPicker, setShowPicker] = useState(true)
   const [loadingDriver, setLoadingDriver] = useState<string | null>(null)
+  const [lapDelta, setLapDelta] = useState<LapDelta | null>(null)
+  const [deltaLoading, setDeltaLoading] = useState(false)
 
   const handleAnalyse = async () => {
     if (!round || selectedDrivers.length === 0) return
     setLoading(true)
     setError(null)
     setShowPicker(false)
+    setLapDelta(null)
     for (const driver of selectedDrivers) {
       setLoadingDriver(driver)
       try {
@@ -51,6 +55,23 @@ export default function App() {
       setError('Failed to load cluster data')
     }
     setClusterLoading(false)
+  }
+
+  const handleDelta = async () => {
+    if (!round || dnaProfiles.length < 2) return
+    setDeltaLoading(true)
+    setError(null)
+    try {
+      const result = await getLapDelta(
+        year, round.round, sessionType,
+        dnaProfiles[0].driver_code,
+        dnaProfiles[1].driver_code,
+      )
+      setLapDelta(result)
+    } catch (e) {
+      setError('Failed to load lap delta')
+    }
+    setDeltaLoading(false)
   }
 
   return (
@@ -168,8 +189,11 @@ export default function App() {
           {clusterLoading && (
             <SkeletonLabel text="Building style profiles for all drivers..." />
           )}
+          {deltaLoading && (
+            <SkeletonLabel text={`Computing lap delta...`} />
+          )}
 
-          {/* Skeleton placeholders while loading */}
+          {/* Skeleton placeholders */}
           {loading && selectedDrivers
             .filter(d => !dnaProfiles.find(p => p.driver_code === d))
             .map(d => <SkeletonCard key={d} />)
@@ -186,6 +210,33 @@ export default function App() {
           {dnaProfiles.length > 0 && (
             <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem' }}>
               <RadarChart profiles={dnaProfiles} />
+            </div>
+          )}
+
+          {/* Lap delta — show button when 2+ drivers loaded */}
+          {dnaProfiles.length >= 2 && !lapDelta && !deltaLoading && (
+            <button
+              onClick={handleDelta}
+              style={{
+                width: '100%',
+                padding: '0.875rem',
+                background: '#1c1c1e',
+                border: '1px dashed #3f3f46',
+                borderRadius: '0.75rem',
+                fontWeight: 700,
+                fontSize: '0.875rem',
+                color: '#a1a1aa',
+                cursor: 'pointer',
+              }}
+            >
+              ⚡ Load lap delta — {dnaProfiles[0].driver_code} vs {dnaProfiles[1].driver_code}
+            </button>
+          )}
+
+          {/* Delta chart */}
+          {lapDelta && (
+            <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem' }}>
+              <DeltaChart delta={lapDelta} />
             </div>
           )}
 

@@ -107,3 +107,25 @@ export const getCluster = async (
   const res = await client.get(`/api/dna/${year}/${round}/${sessionType}/cluster/all`)
   return res.data
 }
+export interface LapDelta {
+  driver_a: string
+  driver_b: string
+  color_a: string
+  color_b: string
+  distance: number[]
+  delta: number[]
+  final_delta: number
+}
+
+export const getLapDelta = async (
+  year: number,
+  round: number,
+  sessionType: string,
+  driverA: string,
+  driverB: string
+): Promise<LapDelta> => {
+  const res = await client.get(
+    `/api/dna/${year}/${round}/${sessionType}/delta/${driverA}/${driverB}`
+  )
+  return res.data
+}
