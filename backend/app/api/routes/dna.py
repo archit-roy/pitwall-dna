@@ -123,10 +123,6 @@ async def get_lap_delta(
     driver_a: str,
     driver_b: str,
 ):
-    """
-    Return the cumulative time delta between two drivers across a lap.
-    Positive = driver_a is ahead, negative = driver_b is ahead.
-    """
     try:
         session = load_session(year, round, session_type)
         key = f"{year}_{round}_{session_type}"
@@ -164,17 +160,15 @@ async def get_lap_delta(
     except Exception as e:
         logger.exception("Delta failed")
         raise HTTPException(500, str(e))
-        @router.get("/season-compare/{driver}")
+
+
+@router.get("/season-compare/{driver}")
 async def season_compare(
     driver: str,
     years: list[int] = Query(...),
     round_num: int = Query(...),
     session_type: str = Query(default="Q"),
 ):
-    """
-    Build DNA profiles for the same driver across multiple seasons.
-    Returns one profile per year for the same round and session type.
-    """
     profiles = []
     for year in years:
         try:
