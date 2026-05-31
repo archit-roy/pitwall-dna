@@ -129,3 +129,15 @@ export const getLapDelta = async (
   )
   return res.data
 }
+export const getSeasonComparison = async (
+  driver: string,
+  years: number[],
+  roundNum: number,
+  sessionType: string
+): Promise<{ driver: string; profiles: (DriverDNA & { year: number })[] }> => {
+  const params = years.map(y => `years=${y}`).join('&')
+  const res = await client.get(
+    `/api/dna/season-compare/${driver}?${params}&round_num=${roundNum}&session_type=${sessionType}`
+  )
+  return res.data
+}

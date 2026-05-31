@@ -5,6 +5,7 @@ import DeltaChart from './components/dna/DeltaChart'
 import RadarChart from './components/radar/RadarChart'
 import CornerChart from './components/corner/CornerChart'
 import ScatterPlot from './components/compare/ScatterPlot'
+import SeasonCompare from './components/compare/SeasonCompare'
 import { SkeletonCard, SkeletonLabel } from './components/ui/Skeleton'
 import { useAppStore } from './stores/store'
 import { getDriverDNA, getCluster, getLapDelta } from './api'
@@ -23,6 +24,7 @@ export default function App() {
   const [loadingDriver, setLoadingDriver] = useState<string | null>(null)
   const [lapDelta, setLapDelta] = useState<LapDelta | null>(null)
   const [deltaLoading, setDeltaLoading] = useState(false)
+  const [seasonDriver, setSeasonDriver] = useState<string | null>(null)
 
   const handleAnalyse = async () => {
     if (!round || selectedDrivers.length === 0) return
@@ -182,38 +184,27 @@ export default function App() {
         {/* Results */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
-          {/* Loading labels */}
-          {loadingDriver && (
-            <SkeletonLabel text={`Loading telemetry for ${loadingDriver}...`} />
-          )}
-          {clusterLoading && (
-            <SkeletonLabel text="Building style profiles for all drivers..." />
-          )}
-          {deltaLoading && (
-            <SkeletonLabel text={`Computing lap delta...`} />
-          )}
+          {loadingDriver && <SkeletonLabel text={`Loading telemetry for ${loadingDriver}...`} />}
+          {clusterLoading && <SkeletonLabel text="Building style profiles for all drivers..." />}
+          {deltaLoading && <SkeletonLabel text="Computing lap delta..." />}
 
-          {/* Skeleton placeholders */}
           {loading && selectedDrivers
             .filter(d => !dnaProfiles.find(p => p.driver_code === d))
             .map(d => <SkeletonCard key={d} />)
           }
 
-          {/* Scatter */}
           {clusterPoints.length > 0 && (
             <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem', overflow: 'hidden' }}>
               <ScatterPlot points={clusterPoints} />
             </div>
           )}
 
-          {/* Radar */}
           {dnaProfiles.length > 0 && (
             <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem' }}>
               <RadarChart profiles={dnaProfiles} />
             </div>
           )}
 
-          {/* Lap delta — show button when 2+ drivers loaded */}
           {dnaProfiles.length >= 2 && !lapDelta && !deltaLoading && (
             <button
               onClick={handleDelta}
@@ -233,21 +224,18 @@ export default function App() {
             </button>
           )}
 
-          {/* Delta chart */}
           {lapDelta && (
             <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem' }}>
               <DeltaChart delta={lapDelta} />
             </div>
           )}
 
-          {/* Corner breakdown */}
           {dnaProfiles.length > 0 && (
             <div style={{ background: '#18181b', borderRadius: '0.75rem', border: '1px solid #3f3f46', padding: '1rem', overflowX: 'auto' }}>
               <CornerChart profiles={dnaProfiles} />
             </div>
           )}
 
-          {/* Driver cards */}
           {dnaProfiles.map((dna) => (
             <div
               key={dna.driver_code}
@@ -292,10 +280,38 @@ export default function App() {
                   </div>
                 ))}
               </div>
+
+              {/* Season compare button per driver */}
+              <button
+                onClick={() => setSeasonDriver(seasonDriver === dna.driver_code ? null : dna.driver_code)}
+                style={{
+                  marginTop: '0.75rem',
+                  width: '100%',
+                  padding: '0.625rem',
+                  background: '#27272a',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.75rem',
+                  color: '#a1a1aa',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                {seasonDriver === dna.driver_code ? 'Hide season comparison' : `📅 Compare ${dna.driver_code} across seasons`}
+              </button>
+
+              {seasonDriver === dna.driver_code && round && (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <SeasonCompare
+                    currentDriver={dna.driver_code}
+                    currentRound={round.round}
+                    currentSessionType={sessionType}
+                  />
+                </div>
+              )}
             </div>
           ))}
 
-          {/* Empty state */}
           {!loading && !clusterLoading && dnaProfiles.length === 0 && clusterPoints.length === 0 && !showPicker && (
             <div style={{ height: '16rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#52525b', fontSize: '0.875rem' }}>
               Select a session, pick drivers, hit Analyse DNA

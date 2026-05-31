@@ -164,3 +164,32 @@ async def get_lap_delta(
     except Exception as e:
         logger.exception("Delta failed")
         raise HTTPException(500, str(e))
+        @router.get("/season-compare/{driver}")
+async def season_compare(
+    driver: str,
+    years: list[int] = Query(...),
+    round_num: int = Query(...),
+    session_type: str = Query(default="Q"),
+):
+    """
+    Build DNA profiles for the same driver across multiple seasons.
+    Returns one profile per year for the same round and session type.
+    """
+    profiles = []
+    for year in years:
+        try:
+            session = load_session(year, round_num, session_type)
+            key = f"{year}_{round_num}_{session_type}"
+            dna = build_driver_dna(session, driver.upper(), key)
+            dna["year"] = year
+            profiles.append(dna)
+        except Exception as e:
+            logger.warning(f"Skipping {driver} {year}: {e}")
+
+    if not profiles:
+        raise HTTPException(404, f"No profiles found for {driver}")
+
+    return {
+        "driver": driver.upper(),
+        "profiles": profiles,
+    }
